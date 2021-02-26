@@ -1,0 +1,161 @@
+#Namespace
+apiVersion: v1
+kind: Namespace
+metadata: 
+    name: practice-namespace
+
+---
+# volumen persistente de Postgres
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-postgres-volume
+spec: # Configuración de lo que va a construir a nivel de disco
+  storageClassName: postgres
+  capacity:
+    storage: 10Gi # Capacidad 
+  accessModes:
+    - ReadWriteOnce # Lectura y escritura
+  hostPath:
+    path: "/mnt/postgres-volume" # Lugar donde se almacenaran los datos
+
+---
+# Almacenamiento de clase de Postgres
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: postgres
+provisioner: kubernetes.io/no-provisioner # no-provisioner -> Entorno de infraestructura local
+reclaimPolicy: Retain # Que realizara con mis datos ?
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# Reclamo de Volumen persistente de Postgres
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pcv-postgres
+spec:
+  storageClassName: postgres
+  accessModes:
+    - ReadWriteOnce
+  resources: #Configuración de lo que va a reclamar
+    requests: 
+      storage: 5Gi
+
+---
+#Configmap Postgres
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-configmap
+  namespace: practice-namespace
+  labels:
+    app: postgres-service  
+data:
+  POSTGRES_PASSWORD: "Fabricio"
+  POSTGRES_USER: "admin"
+  POSTGRES_DB: "practicedb"
+
+---
+# Deploy Postgres
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresdb-deployment
+  namespace: practice-namespace
+  labels:
+    app: postgres-service
+spec:
+  selector:
+    matchLabels:
+      app: postgres-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres-service
+    spec:
+      containers:
+      - image: postgres:11  #docker pull image
+        name: postgres-practice
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-db-volume 
+        envFrom:
+         - configMapRef:
+              name: postgres-configmap
+      volumes:
+      - name: postgres-db-volume
+        persistentVolumeClaim:
+           claimName: pcv-postgres
+---
+#Service Postgres
+apiVersion: v1
+kind: Service
+metadata:
+  name: services-postgres
+spec:
+  selector:
+    app:  postgres-service
+  ports:
+    - port: 5300
+      targetPort: 5432
+  type: LoadBalancer
+
+                                                                      #MYSQL
+
+# volumen persistente de MySql
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mysql-volume
+spec: # Configuración de lo que va a construir a nivel de disco
+  storageClassName: postgres
+  capacity:
+    storage: 10Gi # Capacidad 
+  accessModes:
+    - ReadWriteOnce # Lectura y escritura
+  hostPath:
+    path: "/mnt/mysql-volume" # Lugar donde se almacenaran los datos
+
+---
+# Almacenamiento de clase de MySQL
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mysql
+provisioner: kubernetes.io/no-provisioner # no-provisioner -> Entorno de infraestructura local
+reclaimPolicy: Retain # Que realizara con mis datos ?
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# Reclamo de Volumen persistente de MySQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pcv-mysql
+spec:
+  storageClassName: mysql
+  accessModes:
+    - ReadWriteOnce
+  resources: #Configuración de lo que va a reclamar
+    requests: 
+      storage: 5Gi
+
+---
+#Configmap MySQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-configmap
+  namespace: practice-namespace
+  labels:
+    app: postgres-service  
+data:
+  POSTGRES_PASSWORD: "Fabricio"
+  POSTGRES_USER: "admin"
+  POSTGRES_DB: "practicedb"
