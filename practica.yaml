@@ -114,7 +114,7 @@ kind: PersistentVolume
 metadata:
   name: pv-mysql-volume
 spec: # Configuración de lo que va a construir a nivel de disco
-  storageClassName: postgres
+  storageClassName: mysql
   capacity:
     storage: 10Gi # Capacidad 
   accessModes:
@@ -151,11 +151,59 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-configmap
+  name: mysql-configmap
   namespace: practice-namespace
   labels:
-    app: postgres-service  
+    app: mysql-service  
 data:
-  POSTGRES_PASSWORD: "Fabricio"
-  POSTGRES_USER: "admin"
-  POSTGRES_DB: "practicedb"
+  MYSQL_ROOT_PASSWORD: "Fabricio"
+  MYSQL_DATABASE: "mysqldb"
+
+---
+# Deploy MySQL
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: practice-namespace
+  labels:
+    app: mysql-service
+spec:
+  selector:
+    matchLabels:
+      app: mysql-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql-service
+    spec:
+      containers:
+      - image: mysql:8  #docker pull image
+        name: mysql-practice
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysql-db-volume 
+        envFrom:
+         - configMapRef:
+              name: mysql-configmap
+      volumes:
+      - name: mysql-db-volume
+        persistentVolumeClaim:
+           claimName: pcv-mysql
+---
+#Service MySQL
+apiVersion: v1
+kind: Service
+metadata:
+  name: services-mysql
+spec:
+  selector:
+    app:  mysql-service
+  ports:
+    - port: 5303
+      targetPort: 3306
+  type: LoadBalancer
