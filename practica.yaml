@@ -5,6 +5,8 @@ metadata:
     name: practice-namespace
 
 ---
+#------------------------------------------------------------------Postgres--------------------------------------------------------------------
+
 # volumen persistente de Postgres
 apiVersion: v1
 kind: PersistentVolume
@@ -106,7 +108,7 @@ spec:
       targetPort: 5432
   type: LoadBalancer
 
-                                                                      #MYSQL
+#------------------------------------------------------------------MYSQL------------------------------------------------------------------------
 
 # volumen persistente de MySql
 apiVersion: v1
@@ -206,4 +208,210 @@ spec:
   ports:
     - port: 5303
       targetPort: 3306
+  type: LoadBalancer
+
+#------------------------------------------------------------------------Mongo-------------------------------------------------------------------
+
+# volumen persistente de Mongo
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-mongo-volume
+spec: # Configuración de lo que va a construir a nivel de disco
+  storageClassName: mongo
+  capacity:
+    storage: 10Gi # Capacidad 
+  accessModes:
+    - ReadWriteOnce # Lectura y escritura
+  hostPath:
+    path: "/mnt/mongo-volume" # Lugar donde se almacenaran los datos
+
+---
+# Almacenamiento de clase de Mongo
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mongo
+provisioner: kubernetes.io/no-provisioner # no-provisioner -> Entorno de infraestructura local
+reclaimPolicy: Retain # Que realizara con mis datos ?
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# Reclamo de Volumen persistente de Mongo
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pcv-mongo
+spec:
+  storageClassName: mongo
+  accessModes:
+    - ReadWriteOnce
+  resources: #Configuración de lo que va a reclamar
+    requests: 
+      storage: 5Gi
+
+---
+#Configmap Mongo
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-configmap
+  namespace: practice-namespace
+  labels:
+    app: mongo-service  
+data:
+  MONGO_PASSWORD: "Fabricio"
+  MONGO_USER: "admin"
+  MONGO_DB: "practicadb"
+
+---
+# Deploy Mongo
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-deployment
+  namespace: practice-namespace
+  labels:
+    app: mongo-service
+spec:
+  selector:
+    matchLabels:
+      app: mongo-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo-service
+    spec:
+      containers:
+      - image: mongo:4.1.7
+        name: mongo-practice
+        ports:
+        - containerPort: 27017
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /data/db
+          name: mongo-db-volume 
+        envFrom:
+         - configMapRef:
+              name: mongo-configmap
+      volumes:
+      - name: mongo-db-volume
+        persistentVolumeClaim:
+           claimName: pcv-mongo
+---
+#Service Mongo
+apiVersion: v1
+kind: Service
+metadata:
+  name: services-mongo
+spec:
+  selector:
+    app:  mongo-service
+  ports:
+    - port: 5302
+      targetPort: 27017
+  type: LoadBalancer
+
+
+#--------------------------------------------------------------Redis---------------------------------------------------------------------------
+
+# volumen persistente de Redis
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-redis-volume
+spec: # Configuración de lo que va a construir a nivel de disco
+  storageClassName: redis
+  capacity:
+    storage: 10Gi # Capacidad 
+  accessModes:
+    - ReadWriteOnce # Lectura y escritura
+  hostPath:
+    path: "/mnt/redis-volume" # Lugar donde se almacenaran los datos
+
+---
+# Almacenamiento de clase de Redis
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: redis
+provisioner: kubernetes.io/no-provisioner # no-provisioner -> Entorno de infraestructura local
+reclaimPolicy: Retain # Que realizara con mis datos ?
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# Reclamo de Volumen persistente de Redis
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pcv-redis
+spec:
+  storageClassName: redis
+  accessModes:
+    - ReadWriteOnce
+  resources: #Configuración de lo que va a reclamar
+    requests: 
+      storage: 5Gi
+
+---
+#Configmap Redis
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-configmap
+  namespace: practice-namespace
+  labels:
+    app: redis-service  
+data:
+  REDIS_PASSWORD: "Fabricio"
+  REDIS_DB: "practicadb"
+
+---
+# Deploy Redis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  namespace: practice-namespace
+  labels:
+    app: redis-service
+spec:
+  selector:
+    matchLabels:
+      app: redis-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: redis-service
+    spec:
+      containers:
+      - image: redis:latest
+        name: redis-practice
+        ports:
+        - containerPort: 6379
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /data
+          name: redis-db-volume 
+        envFrom:
+         - configMapRef:
+              name: redis-configmap
+      volumes:
+      - name: redis-db-volume
+        persistentVolumeClaim:
+           claimName: pcv-redis
+---
+#Service Mongo
+apiVersion: v1
+kind: Service
+metadata:
+  name: services-redis
+spec:
+  selector:
+    app:  redis-service
+  ports:
+    - port: 5301
+      targetPort: 6379
   type: LoadBalancer
