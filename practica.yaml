@@ -403,7 +403,7 @@ spec:
         persistentVolumeClaim:
            claimName: pcv-redis
 ---
-#Service Mongo
+#Service Redis
 apiVersion: v1
 kind: Service
 metadata:
