@@ -260,9 +260,9 @@ metadata:
   labels:
     app: mongo-service  
 data:
-  MONGO_PASSWORD: "Fabricio"
-  MONGO_USER: "admin"
-  MONGO_DB: "practicadb"
+  MONGO_INITDB_ROOT_PASSWORD: "prueba"
+  MONGO_INITDB_ROOT_USERNAME: "Fabricio"
+  MONGO_INITDB_DATABASE: "admindb"
 
 ---
 # Deploy Mongo
@@ -291,12 +291,12 @@ spec:
           protocol: TCP
         volumeMounts:
         - mountPath: /data/db
-          name: mongo-db-volume 
+          name: mongo-db-volume1
         envFrom:
          - configMapRef:
               name: mongo-configmap
       volumes:
-      - name: mongo-db-volume
+      - name: mongo-db-volume1
         persistentVolumeClaim:
            claimName: pcv-mongo
 ---
