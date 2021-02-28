@@ -364,7 +364,7 @@ metadata:
   labels:
     app: redis-service  
 data:
-  REDIS_PASSWORD: "Fabricio"
+  REDIS_MASTER_PASSWORD: "Fabricio"
   REDIS_DB: "practicadb"
 
 ---
